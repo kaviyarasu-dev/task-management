@@ -47,5 +47,15 @@ export function registerNotificationListeners(): void {
     });
   });
 
+  EventBus.on('invitation.created', async ({ email, tenantId, role, token }) => {
+    const inviteUrl = `${process.env['FRONTEND_URL'] ?? 'http://localhost:5173'}/invite/${token}`;
+    await emailQueue.add('user-invite', {
+      to: email,
+      subject: 'You have been invited to join an organization',
+      templateId: 'user-invite',
+      variables: { tenantId, role, inviteUrl },
+    });
+  });
+
   console.log('✅ Notification listeners registered');
 }

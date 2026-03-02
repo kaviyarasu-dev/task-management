@@ -1,13 +1,17 @@
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, RefreshCw } from 'lucide-react';
 import type { Task } from '@/shared/types/entities.types';
 import type { Project } from '@/shared/types/entities.types';
 import type { TaskPriority } from '@/shared/types/api.types';
 import { useStatuses, useDefaultStatus } from '@/features/statuses';
+import { useMembers } from '@/features/users';
 import { createTaskSchema, type CreateTaskFormData } from '../validators/task.validators';
 import { cn } from '@/shared/lib/utils';
+import { UserSelect } from '@/shared/components/UserSelect';
+import { RecurrenceSelect } from './RecurrenceSelect';
+import { RecurrencePreview } from './RecurrencePreview';
 
 interface TaskFormModalProps {
   isOpen: boolean;
@@ -37,11 +41,15 @@ export function TaskFormModal({
 }: TaskFormModalProps) {
   const statuses = useStatuses();
   const defaultStatus = useDefaultStatus();
+  const { data: membersData } = useMembers();
+  const members = membersData?.data ?? [];
+  const [showRecurrence, setShowRecurrence] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<CreateTaskFormData>({
     resolver: zodResolver(createTaskSchema),
@@ -55,6 +63,9 @@ export function TaskFormModal({
           ? task.status._id
           : task.statusId;
 
+        const hasRecurrence = !!task.recurrence;
+        setShowRecurrence(hasRecurrence);
+
         reset({
           title: task.title,
           description: task.description ?? '',
@@ -63,8 +74,11 @@ export function TaskFormModal({
           priority: task.priority,
           dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
           tags: task.tags.join(', '),
+          assigneeId: task.assigneeId ?? null,
+          recurrence: task.recurrence ?? null,
         });
       } else {
+        setShowRecurrence(false);
         reset({
           title: '',
           description: '',
@@ -73,6 +87,8 @@ export function TaskFormModal({
           priority: 'medium',
           dueDate: '',
           tags: '',
+          assigneeId: null,
+          recurrence: null,
         });
       }
     }
@@ -259,6 +275,76 @@ export function TaskFormModal({
             <p className="mt-1 text-xs text-muted-foreground">
               Separate multiple tags with commas
             </p>
+          </div>
+
+          {/* Assignee */}
+          <div>
+            <label className="block text-sm font-medium text-foreground">Assignee</label>
+            <Controller
+              name="assigneeId"
+              control={control}
+              render={({ field }) => (
+                <UserSelect
+                  users={members}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Unassigned"
+                  allowClear
+                  className="mt-1"
+                />
+              )}
+            />
+          </div>
+
+          {/* Recurrence */}
+          <div className="border-t border-border pt-4">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showRecurrence}
+                onChange={(e) => {
+                  setShowRecurrence(e.target.checked);
+                  if (!e.target.checked) {
+                    // Clear recurrence when toggled off
+                    const currentValues = control._formValues;
+                    reset({ ...currentValues, recurrence: null });
+                  }
+                }}
+                className="h-4 w-4 rounded border-border text-primary focus:ring-primary/50"
+              />
+              <RefreshCw className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Repeat task</span>
+            </label>
+
+            {showRecurrence && (
+              <div className="mt-3 space-y-3">
+                <Controller
+                  name="recurrence"
+                  control={control}
+                  render={({ field }) => (
+                    <RecurrenceSelect
+                      value={field.value ?? null}
+                      onChange={(pattern) => field.onChange(pattern)}
+                    />
+                  )}
+                />
+
+                {/* Preview next occurrences */}
+                <Controller
+                  name="recurrence"
+                  control={control}
+                  render={({ field }) =>
+                    field.value ? (
+                      <RecurrencePreview
+                        pattern={field.value}
+                        count={3}
+                        className="rounded-md border border-border bg-muted/30 p-3"
+                      />
+                    ) : null
+                  }
+                />
+              </div>
+            )}
           </div>
 
           {/* Actions */}

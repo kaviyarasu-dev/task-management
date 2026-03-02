@@ -3,6 +3,10 @@ import { z } from 'zod';
 /** MongoDB ObjectId validation regex */
 const objectIdRegex = /^[a-f\d]{24}$/i;
 
+export const taskIdParamSchema = z.object({
+  id: z.string().regex(objectIdRegex, 'Invalid task ID'),
+});
+
 export const createTaskSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(5000).optional(),
@@ -30,5 +34,5 @@ export const taskQuerySchema = z.object({
   status: z.string().regex(objectIdRegex, 'Invalid status ID').optional(), // ObjectId filter
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   cursor: z.string().optional(),
-  limit: z.coerce.number().min(1).max(100).optional(),
+  limit: z.coerce.number().min(1).max(500).optional(),
 });

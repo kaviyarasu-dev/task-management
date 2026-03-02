@@ -3,7 +3,9 @@ import { useState, useRef, useEffect } from 'react';
 import type { Task } from '@/shared/types/entities.types';
 import { useStatuses } from '@/features/statuses';
 import { TaskPriorityBadge } from './TaskPriorityBadge';
+import { TaskCheckbox } from './TaskCheckbox';
 import { cn, formatDate } from '@/shared/lib/utils';
+import { UserAvatar } from '@/shared/components/UserAvatar';
 
 interface TaskRowProps {
   task: Task;
@@ -44,6 +46,11 @@ export function TaskRow({ task, onStatusChange, onEdit, onDelete, onView }: Task
 
   return (
     <tr className="border-b border-border hover:bg-muted/50">
+      {/* Checkbox */}
+      <td className="w-10 px-4 py-3">
+        <TaskCheckbox taskId={task._id} />
+      </td>
+
       {/* Title */}
       <td className="px-4 py-3">
         <button
@@ -99,8 +106,17 @@ export function TaskRow({ task, onStatusChange, onEdit, onDelete, onView }: Task
 
       {/* Assignee */}
       <td className="px-4 py-3">
-        {task.assigneeId ? (
-          <span className="text-sm text-foreground">Assigned</span>
+        {task.assignee ? (
+          <div className="flex items-center gap-2">
+            <UserAvatar
+              firstName={task.assignee.firstName}
+              lastName={task.assignee.lastName}
+              size="sm"
+            />
+            <span className="text-sm">
+              {task.assignee.firstName} {task.assignee.lastName}
+            </span>
+          </div>
         ) : (
           <span className="text-sm text-muted-foreground">Unassigned</span>
         )}

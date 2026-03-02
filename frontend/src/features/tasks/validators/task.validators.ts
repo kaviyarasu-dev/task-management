@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { recurrencePatternSchema } from './recurrence.validators';
 
 export const createTaskSchema = z.object({
   title: z
@@ -11,6 +12,8 @@ export const createTaskSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   dueDate: z.string().optional(),
   tags: z.string().optional(),
+  assigneeId: z.string().optional().nullable(),
+  recurrence: recurrencePatternSchema.optional().nullable(),
 });
 
 export type CreateTaskFormData = z.infer<typeof createTaskSchema>;

@@ -6,6 +6,7 @@ export interface EventPayloads {
   'task.assigned': { taskId: string; tenantId: string; assigneeId: string; assignedBy: string };
   'task.completed': { taskId: string; tenantId: string; completedBy: string };
   'task.deleted': { taskId: string; tenantId: string; deletedBy: string };
+  'task.updated': { taskId: string; tenantId: string; updatedBy: string };
   'user.invited': { userId: string; tenantId: string; email: string; role: string; invitedBy: string };
   'user.removed': { userId: string; tenantId: string; removedBy: string };
   'tenant.created': { tenantId: string; ownerId: string; plan: string };
@@ -15,6 +16,30 @@ export interface EventPayloads {
   'status.reordered': { tenantId: string; statusIds: string[] };
   'status.defaultChanged': { statusId: string; tenantId: string };
   'status.transitionsUpdated': { statusId: string; tenantId: string; allowedTransitions: string[] };
+  'invitation.created': { invitationId: string; tenantId: string; email: string; role: string; invitedBy: string; token: string };
+  'invitation.accepted': { invitationId: string; tenantId: string; userId: string; email: string };
+  'invitation.cancelled': { invitationId: string; tenantId: string; email: string };
+  'comment.created': { commentId: string; taskId: string; tenantId: string; authorId: string; mentions: string[] };
+  'comment.updated': { commentId: string; taskId: string; tenantId: string; authorId: string };
+  'comment.deleted': { commentId: string; taskId: string; tenantId: string; deletedBy: string };
+  'project.created': { projectId: string; tenantId: string; createdBy: string };
+  'project.updated': { projectId: string; tenantId: string; updatedBy: string };
+  'project.deleted': { projectId: string; tenantId: string; deletedBy: string };
+  // Time tracking events
+  'timer.started': { entryId: string; taskId: string; tenantId: string; userId: string };
+  'timer.stopped': { entryId: string; taskId: string; tenantId: string; durationMinutes: number };
+  'timeEntry.created': { entryId: string; taskId: string; tenantId: string; userId: string; durationMinutes: number };
+  'timeEntry.updated': { entryId: string; taskId: string; tenantId: string; userId: string };
+  'timeEntry.deleted': { entryId: string; taskId: string; tenantId: string; deletedBy: string };
+  // Recurrence events
+  'recurrence.created': { recurrenceId: string; taskId: string; tenantId: string; createdBy: string };
+  'recurrence.updated': { recurrenceId: string; tenantId: string; updatedBy: string };
+  'recurrence.deleted': { recurrenceId: string; taskId: string; tenantId: string; deletedBy: string };
+  'recurrence.deactivated': { recurrenceId: string; tenantId: string; deactivatedBy: string };
+  'recurrence.taskGenerated': { taskId: string; recurrenceId: string; tenantId: string; occurrenceNumber: number };
+  // Webhook events
+  'webhook.delivered': { webhookId: string; deliveryId: string; tenantId: string };
+  'webhook.failed': { webhookId: string; deliveryId: string; tenantId: string; reason: string };
 }
 
 export type EventName = keyof EventPayloads;

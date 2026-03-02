@@ -34,7 +34,7 @@ export class TaskRepository {
     query: PaginationQuery,
     options?: FindOptions
   ): Promise<PaginatedResult<ITask | ITaskWithStatus>> {
-    const limit = Math.min(query.limit ?? 20, 100);
+    const limit = Math.min(query.limit ?? 20, 500);
     const filter: Record<string, unknown> = { tenantId, deletedAt: null };
 
     if (filters.projectId) filter['projectId'] = filters.projectId;

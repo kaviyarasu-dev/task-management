@@ -1,22 +1,25 @@
-import { Worker, Processor } from 'bullmq';
+import { Worker, Processor, Job } from 'bullmq';
 import { getBullMQConnection } from '../../redis/client';
-import { ReminderJobData } from '../queues';
 
-export function createReminderWorker(processor: Processor<ReminderJobData>): Worker<ReminderJobData> {
-  const worker = new Worker<ReminderJobData>('reminders', processor, {
+export type ReminderCheckJobData = {
+  triggeredAt?: string;
+};
+
+export function createReminderWorker(processor: Processor<ReminderCheckJobData>): Worker<ReminderCheckJobData> {
+  const worker = new Worker<ReminderCheckJobData>('reminders', processor, {
     connection: getBullMQConnection(),
-    concurrency: 3,
+    concurrency: 1, // Process one check at a time
   });
 
-  worker.on('completed', (job) => {
+  worker.on('completed', (job: Job) => {
     console.log(`[ReminderWorker] Job ${job.id} completed`);
   });
 
-  worker.on('failed', (job, err) => {
+  worker.on('failed', (job: Job | undefined, err: Error) => {
     console.error(`[ReminderWorker] Job ${job?.id} failed:`, err.message);
   });
 
-  worker.on('error', (err) => {
+  worker.on('error', (err: Error) => {
     console.error('[ReminderWorker] Worker error:', err);
   });
 

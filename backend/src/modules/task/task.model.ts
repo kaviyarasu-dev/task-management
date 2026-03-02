@@ -21,6 +21,8 @@ export interface ITask extends BaseDocument {
   }>;
   // Plugin system: tenant-specific custom fields stored as flexible map
   customFields: Map<string, unknown>;
+  // Reference to the recurrence that generated this task (if any)
+  recurrenceId?: Types.ObjectId;
 }
 
 /** Task with populated status details */
@@ -59,6 +61,11 @@ const taskSchema = new Schema<ITask>({
     default: [],
   },
   customFields: { type: Map, of: Schema.Types.Mixed, default: {} },
+  recurrenceId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Recurrence',
+    index: true,
+  },
 });
 
 applyBaseSchema(taskSchema);
@@ -80,5 +87,9 @@ taskSchema.index({ tenantId: 1, projectId: 1, status: 1 }); // List tasks in pro
 taskSchema.index({ tenantId: 1, assigneeId: 1, status: 1 }); // My tasks
 taskSchema.index({ tenantId: 1, dueDate: 1 }); // Upcoming deadlines
 taskSchema.index({ tenantId: 1, priority: 1, status: 1 }); // Priority queue view
+
+// Indexes for reports aggregation pipelines
+taskSchema.index({ tenantId: 1, createdAt: -1 }); // Velocity reports (task creation over time)
+taskSchema.index({ tenantId: 1, completedAt: -1 }); // Completed tasks queries
 
 export const Task = model<ITask>('Task', taskSchema);

@@ -1,12 +1,17 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
+import { AcceptInvitePage } from '@/pages/auth/AcceptInvitePage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { ProjectsPage } from '@/pages/projects/ProjectsPage';
+import { ProjectDetailPage } from '@/pages/projects/ProjectDetailPage';
 import { TasksPage } from '@/pages/tasks/TasksPage';
+import { CalendarPage } from '@/pages/calendar/CalendarPage';
 import { TeamPage } from '@/pages/settings/TeamPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { ProfilePage } from '@/pages/settings/ProfilePage';
+import { ReportsPage } from '@/pages/reports/ReportsPage';
+import { WebhooksPage } from '@/pages/settings/WebhooksPage';
 import { StatusListPage } from '@/features/statuses/components/StatusListPage';
 import { WorkflowPage } from '@/features/statuses/components/WorkflowPage';
 import { AppLayout } from '@/layouts/AppLayout';
@@ -37,6 +42,9 @@ export function AppRouter() {
         />
       </Route>
 
+      {/* Accept invitation (accessible to anyone) */}
+      <Route path={ROUTES.ACCEPT_INVITE} element={<AcceptInvitePage />} />
+
       {/* App routes */}
       <Route
         element={
@@ -47,8 +55,18 @@ export function AppRouter() {
       >
         <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
         <Route path={ROUTES.PROJECTS} element={<ProjectsPage />} />
+        <Route path={ROUTES.PROJECT_DETAIL} element={<ProjectDetailPage />} />
         <Route path={ROUTES.TASKS} element={<TasksPage />} />
+        <Route path={ROUTES.CALENDAR} element={<CalendarPage />} />
         <Route path={ROUTES.TEAM} element={<TeamPage />} />
+        <Route
+          path={ROUTES.REPORTS}
+          element={
+            <ProtectedRoute allowedRoles={['owner', 'admin']}>
+              <ReportsPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path={ROUTES.SETTINGS}
           element={
@@ -70,6 +88,14 @@ export function AppRouter() {
           element={
             <ProtectedRoute allowedRoles={['owner', 'admin']}>
               <WorkflowPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.SETTINGS_WEBHOOKS}
+          element={
+            <ProtectedRoute allowedRoles={['owner', 'admin']}>
+              <WebhooksPage />
             </ProtectedRoute>
           }
         />

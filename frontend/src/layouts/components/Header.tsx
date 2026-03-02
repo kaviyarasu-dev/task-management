@@ -1,9 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, LogOut, User, ChevronDown } from 'lucide-react';
+import { Menu, LogOut, User, ChevronDown, Clock, StopCircle } from 'lucide-react';
 import { useAuth, useAuthStore } from '@/features/auth';
 import { ROUTES } from '@/shared/constants/routes';
 import { cn, getInitials } from '@/shared/lib/utils';
+import {
+  useActiveTimerSync,
+  useElapsedSeconds,
+  useIsTimerRunning,
+  useTimerStore,
+  formatTimerDisplay,
+} from '@/features/timeTracking';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -14,6 +21,12 @@ export function Header({ onMenuClick }: HeaderProps) {
   const user = useAuthStore((state) => state.user);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Timer state
+  useActiveTimerSync();
+  const elapsedSeconds = useElapsedSeconds();
+  const isTimerRunning = useIsTimerRunning();
+  const stopTimer = useTimerStore((state) => state.stop);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -40,6 +53,23 @@ export function Header({ onMenuClick }: HeaderProps) {
 
       {/* Spacer for desktop */}
       <div className="hidden lg:block" />
+
+      {/* Active Timer Indicator */}
+      {isTimerRunning && (
+        <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1.5">
+          <Clock className="h-4 w-4 text-primary animate-pulse" />
+          <span className="font-mono text-sm font-medium tabular-nums text-primary">
+            {formatTimerDisplay(elapsedSeconds)}
+          </span>
+          <button
+            onClick={() => stopTimer()}
+            className="rounded p-1 hover:bg-destructive/10"
+            title="Stop timer"
+          >
+            <StopCircle className="h-4 w-4 text-destructive" />
+          </button>
+        </div>
+      )}
 
       {/* User dropdown */}
       <div className="relative" ref={dropdownRef}>

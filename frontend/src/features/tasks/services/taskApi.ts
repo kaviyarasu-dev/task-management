@@ -70,4 +70,25 @@ export const taskApi = {
     const response = await api.delete<ApiResponse<null>>(`/tasks/${taskId}`);
     return response.data;
   },
+
+  // Bulk update status
+  bulkUpdateStatus: async (
+    taskIds: string[],
+    statusId: string
+  ): Promise<void> => {
+    await api.post('/tasks/bulk/status', { taskIds, statusId });
+  },
+
+  // Bulk delete
+  bulkDelete: async (taskIds: string[]): Promise<void> => {
+    await api.post('/tasks/bulk/delete', { taskIds });
+  },
+
+  // Bulk assign
+  bulkAssign: async (
+    taskIds: string[],
+    assigneeId: string | null
+  ): Promise<void> => {
+    await api.post('/tasks/bulk/assign', { taskIds, assigneeId });
+  },
 };

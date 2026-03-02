@@ -28,11 +28,19 @@ export function formatRelativeTime(date: string | Date): string {
   return formatDate(date);
 }
 
-// Get initials from name
+// Get initials from first and last name
 export function getInitials(firstName?: string, lastName?: string): string {
   const first = firstName?.charAt(0) ?? '';
   const last = lastName?.charAt(0) ?? '';
   return `${first}${last}`.toUpperCase() || '?';
+}
+
+// Get initials from a full name string
+export function getInitialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
 }
 
 // Truncate text

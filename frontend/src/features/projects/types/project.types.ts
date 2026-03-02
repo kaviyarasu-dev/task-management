@@ -9,6 +9,7 @@ export interface UpdateProjectData {
   description?: string;
   color?: string;
   isArchived?: boolean;
+  memberIds?: string[];
 }
 
 export interface ProjectFilters {

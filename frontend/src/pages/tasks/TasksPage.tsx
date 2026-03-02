@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { useTasks } from '@/features/tasks/hooks/useTasks';
 import { useCreateTask, useUpdateTask, useDeleteTask } from '@/features/tasks/hooks/useTaskMutations';
@@ -9,7 +9,9 @@ import { TaskRow } from '@/features/tasks/components/TaskRow';
 import { TaskBoard } from '@/features/tasks/components/TaskBoard';
 import { TaskFormModal } from '@/features/tasks/components/TaskFormModal';
 import { TaskDetailModal } from '@/features/tasks/components/TaskDetailModal';
+import { BulkActionBar } from '@/features/tasks/components/BulkActionBar';
 import { ViewToggle, type ViewMode } from '@/features/tasks/components/ViewToggle';
+import { useSelectionStore } from '@/features/tasks/stores/selectionStore';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import type { Task } from '@/shared/types/entities.types';
 import type { TaskPriority } from '@/shared/types/api.types';
@@ -31,6 +33,11 @@ export function TasksPage() {
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [initialStatusId, setInitialStatusId] = useState<string>();
 
+  // Selection
+  const selectedIds = useSelectionStore((state) => state.selectedIds);
+  const selectAll = useSelectionStore((state) => state.selectAll);
+  const clearSelection = useSelectionStore((state) => state.clearSelection);
+
   // Fetch statuses and sync to store (required for dropdown and board)
   useStatusesQuery();
 
@@ -49,6 +56,12 @@ export function TasksPage() {
   });
 
   const tasks = data?.pages.flatMap((p) => p.data) ?? [];
+
+  // Check if all tasks are selected
+  const allSelected = useMemo(() => {
+    if (tasks.length === 0) return false;
+    return tasks.every((task) => selectedIds.has(task._id));
+  }, [tasks, selectedIds]);
 
   // Mutations
   const createMutation = useCreateTask();
@@ -193,6 +206,20 @@ export function TasksPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border text-left text-sm text-muted-foreground">
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={() => {
+                      if (allSelected) {
+                        clearSelection();
+                      } else {
+                        selectAll(tasks.map((t) => t._id));
+                      }
+                    }}
+                    className="h-4 w-4 rounded border-border"
+                  />
+                </th>
                 <th className="px-4 py-3 font-medium">Task</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Priority</th>
@@ -263,6 +290,9 @@ export function TasksPage() {
         isDestructive
         isLoading={deleteMutation.isPending}
       />
+
+      {/* Bulk Actions */}
+      <BulkActionBar />
     </div>
   );
 }

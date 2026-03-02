@@ -6,17 +6,20 @@ import { EventBus } from '@core/events/EventBus';
 import { ITask, ITaskWithStatus } from './task.model';
 import { StatusService } from '../status/status.service';
 import { TransitionService } from '../status/transition.service';
+import { ReminderService } from '../reminder/reminder.service';
 import { PaginatedResult, PaginationQuery, TaskPriority, StatusCategory } from '../../types';
 
 export class TaskService {
   private repo: TaskRepository;
   private statusService: StatusService;
   private transitionService: TransitionService;
+  private reminderService: ReminderService;
 
   constructor() {
     this.repo = new TaskRepository();
     this.statusService = new StatusService();
     this.transitionService = new TransitionService();
+    this.reminderService = new ReminderService();
   }
 
   async list(
@@ -70,6 +73,16 @@ export class TaskService {
       assigneeId: task.assigneeId,
       createdBy: userId,
     });
+
+    // Schedule reminders if due date and assignee are set
+    if (task.dueDate && task.assigneeId) {
+      await this.reminderService.scheduleForTask(
+        tenantId,
+        task.id as string,
+        task.dueDate,
+        task.assigneeId
+      );
+    }
 
     // Return with populated status
     const result = await this.repo.findById(tenantId, task.id as string, { populate: ['status'] });
@@ -128,6 +141,8 @@ export class TaskService {
           tenantId,
           completedBy: userId,
         });
+        // Cancel reminders when task is completed
+        await this.reminderService.cancelTaskReminders(taskId);
       }
 
       // Emit assignment event if assignee changed
@@ -138,6 +153,18 @@ export class TaskService {
           assigneeId: data.assigneeId,
           assignedBy: userId,
         });
+      }
+
+      // Reschedule reminders if due date changed
+      const assigneeId = data.assigneeId || existing.assigneeId;
+      const dueDate = data.dueDate || existing.dueDate;
+      if (data.dueDate && assigneeId && newStatus.category !== 'closed') {
+        await this.reminderService.scheduleForTask(
+          tenantId,
+          taskId,
+          new Date(data.dueDate),
+          assigneeId
+        );
       }
 
       // Return with populated status
@@ -160,6 +187,17 @@ export class TaskService {
       });
     }
 
+    // Reschedule reminders if due date or assignee changed
+    const assigneeId = data.assigneeId || existing.assigneeId;
+    if (data.dueDate && assigneeId) {
+      await this.reminderService.scheduleForTask(
+        tenantId,
+        taskId,
+        new Date(data.dueDate),
+        assigneeId
+      );
+    }
+
     // Return with populated status
     const finalResult = await this.repo.findById(tenantId, taskId, { populate: ['status'] });
     return finalResult as unknown as ITaskWithStatus;
@@ -180,6 +218,9 @@ export class TaskService {
     if (!canDelete) throw new ForbiddenError('You cannot delete this task');
 
     await this.repo.softDelete(tenantId, taskId);
+
+    // Cancel any pending reminders for this task
+    await this.reminderService.cancelTaskReminders(taskId);
 
     await EventBus.emit('task.deleted', { taskId, tenantId, deletedBy: userId });
   }

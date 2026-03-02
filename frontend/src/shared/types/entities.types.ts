@@ -1,9 +1,11 @@
 import { TaskPriority, TenantPlan, UserRole } from './api.types';
 import type { Status } from '@/features/statuses/types/status.types';
+import type { RecurrencePattern } from '@/features/tasks/types/recurrence.types';
 
 // Re-export for convenience
 export type { TaskPriority, TenantPlan, UserRole };
 export type { Status };
+export type { RecurrencePattern };
 
 export interface User {
   _id: string;
@@ -48,12 +50,21 @@ export interface Project {
   updatedAt: string;
 }
 
+// Minimal user info for populated assignee
+export interface TaskAssignee {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
 export interface Task {
   _id: string;
   title: string;
   description?: string;
   projectId: string;
   assigneeId?: string;
+  assignee?: TaskAssignee; // Populated assignee object
   reporterId: string;
   status: Status; // Populated Status object
   statusId: string; // Status ID for mutations
@@ -61,6 +72,8 @@ export interface Task {
   dueDate?: string;
   completedAt?: string;
   tags: string[];
+  recurrence?: RecurrencePattern; // Recurrence pattern for recurring tasks
+  recurrenceId?: string; // Reference to recurrence rule
   tenantId: string;
   createdAt: string;
   updatedAt: string;

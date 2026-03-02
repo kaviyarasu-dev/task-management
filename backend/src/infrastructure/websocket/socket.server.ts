@@ -99,6 +99,23 @@ export function initSocketServer(httpServer: HttpServer): SocketServer {
     io?.to(`tenant:${tenantId}`).emit('status:transitions-updated', { statusId, allowedTransitions });
   });
 
+  // Comment events — broadcast to users viewing the task
+  EventBus.on('comment.created', async ({ commentId, taskId, tenantId, mentions }) => {
+    io?.to(`tenant:${tenantId}`).emit('comment:created', { commentId, taskId });
+    // Notify mentioned users directly
+    for (const userId of mentions) {
+      io?.to(`user:${userId}`).emit('comment:mentioned', { commentId, taskId });
+    }
+  });
+
+  EventBus.on('comment.updated', async ({ commentId, taskId, tenantId }) => {
+    io?.to(`tenant:${tenantId}`).emit('comment:updated', { commentId, taskId });
+  });
+
+  EventBus.on('comment.deleted', async ({ commentId, taskId, tenantId }) => {
+    io?.to(`tenant:${tenantId}`).emit('comment:deleted', { commentId, taskId });
+  });
+
   console.log('✅ WebSocket server initialized');
   return io;
 }

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Reminder</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { padding: 20px; border-radius: 8px 8px 0 0; }
+    .header-due-soon { background: #f59e0b; color: white; }
+    .header-overdue { background: #dc2626; color: white; }
+    .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
+    .task-title { font-size: 18px; font-weight: 600; color: #111827; margin: 10px 0; }
+    .task-meta { color: #6b7280; font-size: 14px; }
+    .due-date { font-weight: 600; }
+    .due-date-overdue { color: #dc2626; }
+    .due-date-due-soon { color: #f59e0b; }
+    .button { display: inline-block; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 15px; color: white; }
+    .button-due-soon { background: #f59e0b; }
+    .button-overdue { background: #dc2626; }
+    .footer { margin-top: 20px; font-size: 12px; color: #9ca3af; }
+  </style>
+</head>
+<body>
+  <div class="header {{#if isOverdue}}header-overdue{{else}}header-due-soon{{/if}}">
+    <h1 style="margin: 0;">
+      {{#if isOverdue}}Task Overdue{{else}}Task Due Soon{{/if}}
+    </h1>
+  </div>
+  <div class="content">
+    <p>Hi {{assigneeName}},</p>
+
+    {{#if isOverdue}}
+    <p>The following task is now <strong>overdue</strong> and requires your attention:</p>
+    {{else}}
+    <p>This is a friendly reminder that the following task is due soon:</p>
+    {{/if}}
+
+    <div class="task-title">{{taskTitle}}</div>
+    <div class="task-meta">
+      <p><strong>Project:</strong> {{projectName}}</p>
+      <p><strong>Due Date:</strong> <span class="due-date {{#if isOverdue}}due-date-overdue{{else}}due-date-due-soon{{/if}}">{{dueDate}}</span></p>
+      {{#if priority}}
+      <p><strong>Priority:</strong> {{priority}}</p>
+      {{/if}}
+    </div>
+
+    <a href="{{taskUrl}}" class="button {{#if isOverdue}}button-overdue{{else}}button-due-soon{{/if}}">View Task</a>
+
+    <div class="footer">
+      <p>This is an automated message from Task SaaS. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>
