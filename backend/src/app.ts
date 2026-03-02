@@ -8,7 +8,18 @@ import { authRouter } from './api/routes/auth.routes';
 import { projectRouter } from './api/routes/project.routes';
 import { taskRouter } from './api/routes/task.routes';
 import { tenantRouter } from './api/routes/tenant.routes';
+import { statusRouter } from './api/routes/status.routes';
 import { userRouter } from './api/routes/user.routes';
+import { invitationRouter } from './api/routes/invitation.routes';
+import { commentRouter } from './api/routes/comment.routes';
+import { activityRouter } from './api/routes/activity.routes';
+import { timeEntryRouter } from './api/routes/timeEntry.routes';
+import { recurrenceRouter } from './api/routes/recurrence.routes';
+import { reminderRouter } from './api/routes/reminder.routes';
+import { reportsRouter } from './api/routes/reports.routes';
+import { exportRouter } from './api/routes/export.routes';
+import { webhookRouter } from './api/routes/webhook.routes';
+import { apiKeyRouter } from './api/routes/apiKey.routes';
 
 export async function createApp(): Promise<express.Application> {
   const app = express();
@@ -43,7 +54,18 @@ export async function createApp(): Promise<express.Application> {
   app.use('/api/v1/tenants', tenantRouter);
   app.use('/api/v1/users', userRouter);
   app.use('/api/v1/projects', projectRouter);
+  app.use('/api/v1/status', statusRouter);
   app.use('/api/v1/tasks', taskRouter);
+  app.use('/api/v1/invitations', invitationRouter);
+  app.use('/api/v1', commentRouter); // Comments nested under /tasks/:taskId/comments
+  app.use('/api/v1/activity', activityRouter);
+  app.use('/api/v1/time-entries', timeEntryRouter);
+  app.use('/api/v1/recurrences', recurrenceRouter);
+  app.use('/api/v1/reminders', reminderRouter);
+  app.use('/api/v1/reports', reportsRouter);
+  app.use('/api/v1/export', exportRouter);
+  app.use('/api/v1/webhooks', webhookRouter);
+  app.use('/api/v1/api-keys', apiKeyRouter);
 
   // 404 handler
   app.use((_req, res) => {

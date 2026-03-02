@@ -1,17 +1,20 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { useTasks } from '@/features/tasks/hooks/useTasks';
 import { useCreateTask, useUpdateTask, useDeleteTask } from '@/features/tasks/hooks/useTaskMutations';
 import { useProjects } from '@/features/projects/hooks/useProjects';
+import { useStatusesQuery, useDefaultStatus } from '@/features/statuses';
 import { TaskFilters } from '@/features/tasks/components/TaskFilters';
 import { TaskRow } from '@/features/tasks/components/TaskRow';
 import { TaskBoard } from '@/features/tasks/components/TaskBoard';
 import { TaskFormModal } from '@/features/tasks/components/TaskFormModal';
 import { TaskDetailModal } from '@/features/tasks/components/TaskDetailModal';
+import { BulkActionBar } from '@/features/tasks/components/BulkActionBar';
 import { ViewToggle, type ViewMode } from '@/features/tasks/components/ViewToggle';
+import { useSelectionStore } from '@/features/tasks/stores/selectionStore';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import type { Task } from '@/shared/types/entities.types';
-import type { TaskStatus, TaskPriority } from '@/shared/types/api.types';
+import type { TaskPriority } from '@/shared/types/api.types';
 import type { CreateTaskFormData } from '@/features/tasks/validators/task.validators';
 
 export function TasksPage() {
@@ -20,7 +23,7 @@ export function TasksPage() {
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState<string>();
-  const [selectedStatus, setSelectedStatus] = useState<TaskStatus>();
+  const [selectedStatusId, setSelectedStatusId] = useState<string>();
   const [selectedPriority, setSelectedPriority] = useState<TaskPriority>();
 
   // Modals
@@ -28,7 +31,18 @@ export function TasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
-  const [defaultStatus, setDefaultStatus] = useState<TaskStatus>('todo');
+  const [initialStatusId, setInitialStatusId] = useState<string>();
+
+  // Selection
+  const selectedIds = useSelectionStore((state) => state.selectedIds);
+  const selectAll = useSelectionStore((state) => state.selectAll);
+  const clearSelection = useSelectionStore((state) => state.clearSelection);
+
+  // Fetch statuses and sync to store (required for dropdown and board)
+  useStatusesQuery();
+
+  // Get default status for creating new tasks
+  const defaultStatus = useDefaultStatus();
 
   // Data
   const { data: projectsData } = useProjects();
@@ -36,21 +50,27 @@ export function TasksPage() {
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useTasks({
     projectId: selectedProjectId,
-    status: viewMode === 'board' ? undefined : selectedStatus, // Board shows all statuses
+    statusId: viewMode === 'board' ? undefined : selectedStatusId, // Board shows all statuses
     priority: selectedPriority,
     limit: viewMode === 'board' ? 100 : 20, // Load more for board view
   });
 
   const tasks = data?.pages.flatMap((p) => p.data) ?? [];
 
+  // Check if all tasks are selected
+  const allSelected = useMemo(() => {
+    if (tasks.length === 0) return false;
+    return tasks.every((task) => selectedIds.has(task._id));
+  }, [tasks, selectedIds]);
+
   // Mutations
   const createMutation = useCreateTask();
   const updateMutation = useUpdateTask();
   const deleteMutation = useDeleteTask();
 
-  const handleCreate = (status: TaskStatus = 'todo') => {
+  const handleCreate = (statusId?: string) => {
     setEditingTask(null);
-    setDefaultStatus(status);
+    setInitialStatusId(statusId ?? defaultStatus?._id);
     setIsFormOpen(true);
   };
 
@@ -63,8 +83,8 @@ export function TasksPage() {
     setViewingTask(task);
   };
 
-  const handleStatusChange = (taskId: string, status: TaskStatus) => {
-    updateMutation.mutate({ taskId, data: { status } });
+  const handleStatusChange = (taskId: string, statusId: string) => {
+    updateMutation.mutate({ taskId, data: { statusId } });
   };
 
   const handleFormSubmit = (formData: CreateTaskFormData) => {
@@ -78,7 +98,10 @@ export function TasksPage() {
         {
           taskId: editingTask._id,
           data: {
-            ...formData,
+            title: formData.title,
+            description: formData.description,
+            statusId: formData.statusId,
+            priority: formData.priority,
             tags,
             dueDate: formData.dueDate || undefined,
           },
@@ -93,9 +116,12 @@ export function TasksPage() {
     } else {
       createMutation.mutate(
         {
-          ...formData,
+          title: formData.title,
+          description: formData.description,
+          projectId: formData.projectId,
+          statusId: formData.statusId ?? initialStatusId,
+          priority: formData.priority,
           tags,
-          status: defaultStatus,
           dueDate: formData.dueDate || undefined,
         },
         { onSuccess: () => setIsFormOpen(false) }
@@ -113,7 +139,7 @@ export function TasksPage() {
 
   const clearFilters = () => {
     setSelectedProjectId(undefined);
-    setSelectedStatus(undefined);
+    setSelectedStatusId(undefined);
     setSelectedPriority(undefined);
   };
 
@@ -139,10 +165,10 @@ export function TasksPage() {
         <TaskFilters
           projects={projects}
           selectedProjectId={selectedProjectId}
-          selectedStatus={viewMode === 'list' ? selectedStatus : undefined}
+          selectedStatusId={viewMode === 'list' ? selectedStatusId : undefined}
           selectedPriority={selectedPriority}
           onProjectChange={setSelectedProjectId}
-          onStatusChange={viewMode === 'list' ? setSelectedStatus : () => {}}
+          onStatusChange={viewMode === 'list' ? setSelectedStatusId : () => {}}
           onPriorityChange={setSelectedPriority}
           onClearAll={clearFilters}
         />
@@ -180,6 +206,20 @@ export function TasksPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border text-left text-sm text-muted-foreground">
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={() => {
+                      if (allSelected) {
+                        clearSelection();
+                      } else {
+                        selectAll(tasks.map((t) => t._id));
+                      }
+                    }}
+                    className="h-4 w-4 rounded border-border"
+                  />
+                </th>
                 <th className="px-4 py-3 font-medium">Task</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Priority</th>
@@ -227,6 +267,7 @@ export function TasksPage() {
         task={editingTask}
         projects={projects}
         isLoading={createMutation.isPending || updateMutation.isPending}
+        initialStatusId={initialStatusId}
       />
 
       <TaskDetailModal
@@ -249,6 +290,9 @@ export function TasksPage() {
         isDestructive
         isLoading={deleteMutation.isPending}
       />
+
+      {/* Bulk Actions */}
+      <BulkActionBar />
     </div>
   );
 }

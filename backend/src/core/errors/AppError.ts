@@ -45,6 +45,12 @@ export class ValidationError extends AppError {
   }
 }
 
+export class BadRequestError extends AppError {
+  constructor(message: string) {
+    super(message, 400, 'BAD_REQUEST');
+  }
+}
+
 export class ConflictError extends AppError {
   constructor(message: string) {
     super(message, 409, 'CONFLICT');
@@ -54,5 +60,20 @@ export class ConflictError extends AppError {
 export class TooManyRequestsError extends AppError {
   constructor(message = 'Too many requests') {
     super(message, 429, 'RATE_LIMIT_EXCEEDED');
+  }
+}
+
+export class TransitionNotAllowedError extends AppError {
+  public readonly fromStatus: string;
+  public readonly toStatus: string;
+
+  constructor(fromStatus: string, toStatus: string) {
+    super(
+      `Transition from "${fromStatus}" to "${toStatus}" is not allowed`,
+      400,
+      'TRANSITION_NOT_ALLOWED'
+    );
+    this.fromStatus = fromStatus;
+    this.toStatus = toStatus;
   }
 }

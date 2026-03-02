@@ -1,13 +1,15 @@
 import { Job } from 'bullmq';
-import { ReminderJobData } from '../queues';
+import { ReminderService } from '@modules/reminder/reminder.service';
 
-export async function reminderProcessor(job: Job<ReminderJobData>): Promise<void> {
-  const { taskId, assigneeEmail, taskTitle, dueDate } = job.data;
+/**
+ * Reminder processor — processes due reminders from the TaskReminder collection.
+ * Runs on a schedule and finds all reminders that are due to be sent.
+ */
+export async function reminderProcessor(job: Job): Promise<void> {
+  console.log(`[ReminderProcessor] Starting reminder check (job ${job.id})`);
 
-  console.log(`[ReminderProcessor] Sending reminder for task ${taskId}`);
-  console.log(`  To: ${assigneeEmail}`);
-  console.log(`  Task: "${taskTitle}" due ${dueDate}`);
+  const reminderService = new ReminderService();
+  const processedCount = await reminderService.processDueReminders();
 
-  // TODO: wire in nodemailer
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  console.log(`[ReminderProcessor] Processed ${processedCount} due reminders`);
 }

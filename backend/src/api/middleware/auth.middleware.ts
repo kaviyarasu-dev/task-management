@@ -3,9 +3,12 @@ import jwt from 'jsonwebtoken';
 import { config } from '../../config';
 import { JwtAccessPayload } from '@modules/auth/auth.types';
 import { RequestContext } from '@core/context/RequestContext';
-import { UnauthorizedError, ForbiddenError } from '@core/errors/AppError';
+import { UnauthorizedError, ForbiddenError, TooManyRequestsError } from '@core/errors/AppError';
 import { UserRole } from '../../types';
 import { randomUUID } from 'crypto';
+import { ApiKeyService } from '@modules/apiKey/apiKey.service';
+import { ApiKeyPermission } from '@modules/apiKey/apiKey.model';
+import { getRedisClient } from '@infrastructure/redis/client';
 
 // Augment Express Request with user property
 declare global {
@@ -16,11 +19,105 @@ declare global {
   }
 }
 
+const apiKeyService = new ApiKeyService();
+
 /**
- * Verifies JWT, attaches user to req.user, and sets RequestContext
- * for the duration of this request.
+ * Unified authentication middleware that supports both JWT and API key auth.
+ *
+ * Authentication priority:
+ * 1. X-API-Key header (API key authentication)
+ * 2. Authorization: Bearer <token> header (JWT authentication)
+ *
+ * Sets RequestContext for the duration of the request.
  */
-export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+export async function authMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  const apiKeyHeader = req.headers['x-api-key'] as string | undefined;
+
+  // Try API key authentication first
+  if (apiKeyHeader) {
+    await authenticateWithApiKey(req, res, next, apiKeyHeader);
+    return;
+  }
+
+  // Fall back to JWT authentication
+  authenticateWithJwt(req, res, next);
+}
+
+/**
+ * Authenticate using API key from X-API-Key header.
+ */
+async function authenticateWithApiKey(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  apiKeyHeader: string
+): Promise<void> {
+  try {
+    const apiKey = await apiKeyService.verify(apiKeyHeader);
+
+    if (!apiKey) {
+      next(new UnauthorizedError('Invalid or expired API key'));
+      return;
+    }
+
+    // Rate limiting check using Redis
+    const redis = getRedisClient();
+    const rateLimitKey = `ratelimit:apikey:${apiKey._id}`;
+    const currentCount = await redis.incr(rateLimitKey);
+
+    // Set TTL on first request in the window
+    if (currentCount === 1) {
+      await redis.expire(rateLimitKey, 60); // 1 minute window
+    }
+
+    if (currentCount > apiKey.rateLimit) {
+      const ttl = await redis.ttl(rateLimitKey);
+      res.setHeader('Retry-After', ttl > 0 ? ttl : 60);
+      res.setHeader('X-RateLimit-Limit', apiKey.rateLimit);
+      res.setHeader('X-RateLimit-Remaining', 0);
+      res.setHeader('X-RateLimit-Reset', Math.floor(Date.now() / 1000) + (ttl > 0 ? ttl : 60));
+      next(new TooManyRequestsError('Rate limit exceeded'));
+      return;
+    }
+
+    // Add rate limit headers
+    res.setHeader('X-RateLimit-Limit', apiKey.rateLimit);
+    res.setHeader('X-RateLimit-Remaining', Math.max(0, apiKey.rateLimit - currentCount));
+    const resetTtl = await redis.ttl(rateLimitKey);
+    res.setHeader('X-RateLimit-Reset', Math.floor(Date.now() / 1000) + (resetTtl > 0 ? resetTtl : 60));
+
+    // Record usage asynchronously
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+    apiKeyService.recordUsage(apiKey._id.toString(), clientIp).catch((err) => {
+      console.error('Failed to record API key usage:', err);
+    });
+
+    // Set request context for API key auth
+    RequestContext.run(
+      {
+        userId: apiKey.createdBy.toString(),
+        tenantId: apiKey.tenantId,
+        email: '',
+        role: 'member',
+        requestId: randomUUID(),
+        apiKeyId: apiKey._id.toString(),
+        permissions: apiKey.permissions,
+      },
+      () => next()
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Authenticate using JWT from Authorization header.
+ */
+function authenticateWithJwt(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     next(new UnauthorizedError('Authorization header missing or malformed'));
@@ -57,17 +154,56 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
  * Role-based access control middleware factory.
  * Use after authMiddleware.
  *
+ * For JWT auth: checks req.user.role
+ * For API key auth: checks RequestContext role (always 'member')
+ *
  * Example: router.delete('/tasks/:id', authMiddleware, requireRole(['owner', 'admin']), ...)
  */
 export function requireRole(allowedRoles: UserRole[]) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
-    if (!req.user) {
+  return (_req: Request, _res: Response, next: NextFunction): void => {
+    const ctx = RequestContext.getOptional();
+
+    if (!ctx) {
       next(new UnauthorizedError());
       return;
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!allowedRoles.includes(ctx.role)) {
       next(new ForbiddenError(`Requires one of: ${allowedRoles.join(', ')}`));
+      return;
+    }
+
+    next();
+  };
+}
+
+/**
+ * Permission-based access control middleware for API key authentication.
+ * Use after authMiddleware.
+ *
+ * For JWT-authenticated requests: always allows (full access)
+ * For API key-authenticated requests: checks if key has the required permission
+ *
+ * Example: router.get('/tasks', requireApiPermission('tasks:read'), taskController.list)
+ */
+export function requireApiPermission(permission: ApiKeyPermission) {
+  return (_req: Request, _res: Response, next: NextFunction): void => {
+    const ctx = RequestContext.getOptional();
+
+    if (!ctx) {
+      next(new UnauthorizedError());
+      return;
+    }
+
+    // JWT auth (no apiKeyId) - allow all permissions
+    if (!ctx.apiKeyId) {
+      next();
+      return;
+    }
+
+    // API key auth - check permission
+    if (!ctx.permissions?.includes(permission)) {
+      next(new ForbiddenError(`API key lacks required permission: ${permission}`));
       return;
     }
 

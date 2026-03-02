@@ -1,32 +1,37 @@
 import { MoreHorizontal, Eye, Edit, Trash2 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import type { Task } from '@/shared/types/entities.types';
-import type { TaskStatus } from '@/shared/types/api.types';
+import { useStatuses } from '@/features/statuses';
 import { TaskPriorityBadge } from './TaskPriorityBadge';
+import { TaskCheckbox } from './TaskCheckbox';
 import { cn, formatDate } from '@/shared/lib/utils';
+import { UserAvatar } from '@/shared/components/UserAvatar';
 
 interface TaskRowProps {
   task: Task;
-  onStatusChange: (taskId: string, status: TaskStatus) => void;
+  onStatusChange: (taskId: string, statusId: string) => void;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   onView: (task: Task) => void;
 }
 
-const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
-  { value: 'todo', label: 'To Do' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'review', label: 'Review' },
-  { value: 'done', label: 'Done' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
 export function TaskRow({ task, onStatusChange, onEdit, onDelete, onView }: TaskRowProps) {
+  const statuses = useStatuses();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Get current status ID
+  const currentStatusId = typeof task.status === 'object' && task.status !== null
+    ? task.status._id
+    : task.statusId;
+
+  // Check if task status is in the "closed" category (e.g., done, cancelled)
+  const isClosedStatus = typeof task.status === 'object' && task.status !== null
+    ? task.status.category === 'closed'
+    : false;
+
   const isOverdue =
-    task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
+    task.dueDate && new Date(task.dueDate) < new Date() && !isClosedStatus;
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -41,6 +46,11 @@ export function TaskRow({ task, onStatusChange, onEdit, onDelete, onView }: Task
 
   return (
     <tr className="border-b border-border hover:bg-muted/50">
+      {/* Checkbox */}
+      <td className="w-10 px-4 py-3">
+        <TaskCheckbox taskId={task._id} />
+      </td>
+
       {/* Title */}
       <td className="px-4 py-3">
         <button
@@ -66,13 +76,13 @@ export function TaskRow({ task, onStatusChange, onEdit, onDelete, onView }: Task
       {/* Status */}
       <td className="px-4 py-3">
         <select
-          value={task.status}
-          onChange={(e) => onStatusChange(task._id, e.target.value as TaskStatus)}
+          value={currentStatusId}
+          onChange={(e) => onStatusChange(task._id, e.target.value)}
           className="rounded border-0 bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
         >
-          {STATUS_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
+          {statuses.map((status) => (
+            <option key={status._id} value={status._id}>
+              {status.name}
             </option>
           ))}
         </select>
@@ -96,8 +106,17 @@ export function TaskRow({ task, onStatusChange, onEdit, onDelete, onView }: Task
 
       {/* Assignee */}
       <td className="px-4 py-3">
-        {task.assigneeId ? (
-          <span className="text-sm text-foreground">Assigned</span>
+        {task.assignee ? (
+          <div className="flex items-center gap-2">
+            <UserAvatar
+              firstName={task.assignee.firstName}
+              lastName={task.assignee.lastName}
+              size="sm"
+            />
+            <span className="text-sm">
+              {task.assignee.firstName} {task.assignee.lastName}
+            </span>
+          </div>
         ) : (
           <span className="text-sm text-muted-foreground">Unassigned</span>
         )}

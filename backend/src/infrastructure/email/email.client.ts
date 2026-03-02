@@ -18,15 +18,38 @@ export function getEmailTransporter(): nodemailer.Transporter {
   return transporter;
 }
 
+export interface EmailAttachment {
+  filename: string;
+  content: string | Buffer;
+  encoding?: string;
+  contentType?: string;
+}
+
 export async function sendEmail(options: {
   to: string;
   subject: string;
   html: string;
   text?: string;
+  attachments?: EmailAttachment[];
 }): Promise<void> {
   const t = getEmailTransporter();
-  await t.sendMail({
+
+  const mailOptions: nodemailer.SendMailOptions = {
     from: config.EMAIL_FROM,
-    ...options,
-  });
+    to: options.to,
+    subject: options.subject,
+    html: options.html,
+    text: options.text,
+  };
+
+  if (options.attachments?.length) {
+    mailOptions.attachments = options.attachments.map((att) => ({
+      filename: att.filename,
+      content: att.content,
+      encoding: att.encoding as BufferEncoding | undefined,
+      contentType: att.contentType,
+    }));
+  }
+
+  await t.sendMail(mailOptions);
 }

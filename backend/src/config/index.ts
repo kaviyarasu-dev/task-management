@@ -24,6 +24,7 @@ const envSchema = z.object({
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
   EMAIL_FROM: z.string().default('Task SaaS <no-reply@example.com>'),
+  EMAIL_TEMPLATE_PATH: z.string().default('./src/infrastructure/email/templates'),
 
   // Rate Limiting
   RATE_LIMIT_FREE: z.coerce.number().default(100),

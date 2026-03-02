@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MobileSidebar } from './components/MobileSidebar';
+import { SkipLink } from '@/shared/components/SkipLink';
 import { cn } from '@/shared/lib/utils';
 
 export function AppLayout() {
@@ -11,13 +12,15 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-muted/30">
+      <SkipLink />
+
       {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
+      <nav className="hidden lg:block" aria-label="Main navigation">
         <Sidebar
           isCollapsed={isSidebarCollapsed}
           onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
-      </div>
+      </nav>
 
       {/* Mobile Sidebar */}
       <MobileSidebar
@@ -34,7 +37,7 @@ export function AppLayout() {
       >
         <Header onMenuClick={() => setIsMobileSidebarOpen(true)} />
 
-        <main className="flex-1 p-4 lg:p-6">
+        <main id="main-content" className="flex-1 p-4 lg:p-6" tabIndex={-1}>
           <Outlet />
         </main>
       </div>

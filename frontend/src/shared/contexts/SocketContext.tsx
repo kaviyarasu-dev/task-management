@@ -39,7 +39,11 @@ export function SocketProvider({ children }: SocketProviderProps) {
     const socketInstance = initializeSocket(accessToken);
     setSocket(socketInstance);
 
-    const handleConnect = () => setIsConnected(true);
+    const handleConnect = () => {
+      setIsConnected(true);
+      // Emit presence online event when connected
+      socketInstance.emit('presence:online');
+    };
     const handleDisconnect = () => setIsConnected(false);
 
     socketInstance.on('connect', handleConnect);

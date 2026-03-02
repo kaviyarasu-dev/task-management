@@ -1,14 +1,41 @@
 import { io, Socket } from 'socket.io-client';
 import { config } from '@/shared/constants/config';
+import type { Status } from '@/features/statuses/types/status.types';
+import type { Activity } from '@/features/activity/types/activity.types';
 
 let socket: Socket | null = null;
 
 export interface SocketEvents {
+  // Task events
   'task:created': { taskId: string };
   'task:updated': { taskId: string };
   'task:deleted': { taskId: string };
   'task:assigned-to-you': { taskId: string; taskTitle: string };
   'task:completed': { taskId: string };
+
+  // Status events
+  'status:created': { status: Status };
+  'status:updated': { status: Status };
+  'status:deleted': { statusId: string };
+  'status:reordered': { statuses: Status[] };
+  'status:default-changed': { statusId: string };
+  'status:transitions-updated': { statusId: string; transitions: string[] };
+
+  // Comment events
+  'comment:created': { commentId: string; taskId: string };
+  'comment:updated': { commentId: string; taskId: string };
+  'comment:deleted': { commentId: string; taskId: string };
+  'comment:mentioned': { commentId: string; taskId: string; mentionedBy: string };
+
+  // Activity events
+  'activity:created': { activity: Activity };
+
+  // Presence events
+  'presence:user_online': { userId: string };
+  'presence:user_offline': { userId: string };
+  'presence:users_list': { users: Array<{ userId: string; lastSeen: string }> };
+
+  // Connection events
   'connect': void;
   'disconnect': void;
   'connect_error': Error;

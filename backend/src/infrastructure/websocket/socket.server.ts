@@ -74,6 +74,48 @@ export function initSocketServer(httpServer: HttpServer): SocketServer {
     io?.to(`tenant:${tenantId}`).emit('task:deleted', { taskId });
   });
 
+  // Status events — broadcast to all users in tenant when statuses change
+  EventBus.on('status.created', async ({ statusId, tenantId }) => {
+    io?.to(`tenant:${tenantId}`).emit('status:created', { statusId });
+  });
+
+  EventBus.on('status.updated', async ({ statusId, tenantId }) => {
+    io?.to(`tenant:${tenantId}`).emit('status:updated', { statusId });
+  });
+
+  EventBus.on('status.deleted', async ({ statusId, tenantId }) => {
+    io?.to(`tenant:${tenantId}`).emit('status:deleted', { statusId });
+  });
+
+  EventBus.on('status.reordered', async ({ tenantId, statusIds }) => {
+    io?.to(`tenant:${tenantId}`).emit('status:reordered', { statusIds });
+  });
+
+  EventBus.on('status.defaultChanged', async ({ statusId, tenantId }) => {
+    io?.to(`tenant:${tenantId}`).emit('status:default-changed', { statusId });
+  });
+
+  EventBus.on('status.transitionsUpdated', async ({ statusId, tenantId, allowedTransitions }) => {
+    io?.to(`tenant:${tenantId}`).emit('status:transitions-updated', { statusId, allowedTransitions });
+  });
+
+  // Comment events — broadcast to users viewing the task
+  EventBus.on('comment.created', async ({ commentId, taskId, tenantId, mentions }) => {
+    io?.to(`tenant:${tenantId}`).emit('comment:created', { commentId, taskId });
+    // Notify mentioned users directly
+    for (const userId of mentions) {
+      io?.to(`user:${userId}`).emit('comment:mentioned', { commentId, taskId });
+    }
+  });
+
+  EventBus.on('comment.updated', async ({ commentId, taskId, tenantId }) => {
+    io?.to(`tenant:${tenantId}`).emit('comment:updated', { commentId, taskId });
+  });
+
+  EventBus.on('comment.deleted', async ({ commentId, taskId, tenantId }) => {
+    io?.to(`tenant:${tenantId}`).emit('comment:deleted', { commentId, taskId });
+  });
+
   console.log('✅ WebSocket server initialized');
   return io;
 }

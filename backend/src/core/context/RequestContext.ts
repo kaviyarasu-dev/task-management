@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import { UserRole } from '../../types';
+import { ApiKeyPermission } from '@modules/apiKey/apiKey.model';
 
 export interface RequestContext {
   userId: string;
@@ -7,6 +8,10 @@ export interface RequestContext {
   email: string;
   role: UserRole;
   requestId: string;
+  /** Set when request is authenticated via API key */
+  apiKeyId?: string;
+  /** API key permissions - only set for API key authenticated requests */
+  permissions?: ApiKeyPermission[];
 }
 
 const storage = new AsyncLocalStorage<RequestContext>();
@@ -51,5 +56,29 @@ export const RequestContext = {
 
   getRole(): UserRole {
     return RequestContext.get().role;
+  },
+
+  /**
+   * Check if current request is authenticated via API key
+   */
+  isApiKeyAuth(): boolean {
+    const ctx = RequestContext.getOptional();
+    return ctx?.apiKeyId !== undefined;
+  },
+
+  /**
+   * Get API key ID if authenticated via API key, null otherwise
+   */
+  getApiKeyId(): string | null {
+    const ctx = RequestContext.getOptional();
+    return ctx?.apiKeyId ?? null;
+  },
+
+  /**
+   * Get API key permissions if authenticated via API key
+   */
+  getPermissions(): ApiKeyPermission[] | null {
+    const ctx = RequestContext.getOptional();
+    return ctx?.permissions ?? null;
   },
 };

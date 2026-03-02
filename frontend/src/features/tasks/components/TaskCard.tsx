@@ -1,9 +1,12 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Calendar, MessageSquare } from 'lucide-react';
+import { GripVertical, Calendar, MessageSquare, RefreshCw } from 'lucide-react';
 import type { Task } from '@/shared/types/entities.types';
 import { TaskPriorityBadge } from './TaskPriorityBadge';
+import { TaskCheckbox } from './TaskCheckbox';
+import { useIsSelected, useSelectionStore } from '../stores/selectionStore';
 import { cn, formatDate } from '@/shared/lib/utils';
+import { UserAvatar } from '@/shared/components/UserAvatar';
 
 interface TaskCardProps {
   task: Task;
@@ -25,19 +28,33 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
     transition,
   };
 
+  const isSelected = useIsSelected(task._id);
+  const isSelecting = useSelectionStore((state) => state.isSelecting);
+
+  // Check if task status is in the "closed" category (e.g., done, cancelled)
+  const isClosedStatus = typeof task.status === 'object' && task.status !== null
+    ? task.status.category === 'closed'
+    : false;
+
   const isOverdue =
-    task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
+    task.dueDate && new Date(task.dueDate) < new Date() && !isClosedStatus;
 
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group rounded-lg border border-border bg-background p-3 shadow-sm',
+        'group relative rounded-lg border border-border bg-background p-3 shadow-sm',
         'cursor-pointer hover:border-primary/50 hover:shadow-md',
-        isDragging && 'opacity-50 shadow-lg'
+        isDragging && 'opacity-50 shadow-lg',
+        isSelected && 'ring-2 ring-primary'
       )}
     >
+      {/* Selection checkbox */}
+      {isSelecting && (
+        <TaskCheckbox taskId={task._id} className="absolute right-2 top-2" />
+      )}
+
       {/* Drag Handle & Priority */}
       <div className="flex items-center justify-between">
         <button
@@ -86,11 +103,25 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
           <span />
         )}
 
-        {task.description && (
-          <span className="flex items-center gap-1">
-            <MessageSquare className="h-3 w-3" />
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {(task.recurrence || task.recurrenceId) && (
+            <span title="Recurring task">
+              <RefreshCw className="h-3 w-3" />
+            </span>
+          )}
+          {task.description && (
+            <span className="flex items-center gap-1">
+              <MessageSquare className="h-3 w-3" />
+            </span>
+          )}
+          {task.assignee && (
+            <UserAvatar
+              firstName={task.assignee.firstName}
+              lastName={task.assignee.lastName}
+              size="sm"
+            />
+          )}
+        </div>
       </div>
     </div>
   );

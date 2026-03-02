@@ -2,8 +2,10 @@ import {
   LayoutDashboard,
   FolderKanban,
   CheckSquare,
+  Calendar,
   Users,
   Settings,
+  FileText,
   type LucideIcon,
 } from 'lucide-react';
 import { ROUTES } from './routes';
@@ -31,6 +33,17 @@ export const mainNavItems: NavItem[] = [
     label: 'Tasks',
     href: ROUTES.TASKS,
     icon: CheckSquare,
+  },
+  {
+    label: 'Calendar',
+    href: ROUTES.CALENDAR,
+    icon: Calendar,
+  },
+  {
+    label: 'Reports',
+    href: ROUTES.REPORTS,
+    icon: FileText,
+    allowedRoles: ['owner', 'admin'],
   },
   {
     label: 'Team',
