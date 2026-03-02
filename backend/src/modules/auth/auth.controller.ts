@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { UserService } from '@modules/user/user.service';
 import { registerSchema, loginSchema } from '@api/validators/auth.validator';
 
 const authService = new AuthService();
+const userService = new UserService();
 
 export const authController = {
   async register(req: Request, res: Response): Promise<void> {
@@ -34,7 +36,8 @@ export const authController = {
     res.json({ success: true, message: 'Logged out' });
   },
 
-  async me(req: Request, res: Response): Promise<void> {
-    res.json({ success: true, data: (req as Request & { user?: unknown }).user });
+  async me(_req: Request, res: Response): Promise<void> {
+    const user = await userService.getMyProfile();
+    res.json({ success: true, data: user });
   },
 };
